@@ -16,7 +16,7 @@ With a `consteval mutable` variable, you would be able to gradually update the s
 
 And very quickly I realized that... that's just stateful metaprogramming. And we can do that with friend injection. And we can even use C++26 reflection to inject that sort of state, like in my previous post.
 
-And so that's basically what I've done: [Take a look](https://compiler-explorer.com/z/xfzfPPP1M).
+And so that's basically what I've done: [Take a look](https://compiler-explorer.com/z/rGxjYavxa).
 
 In Barry's blogpost as well, he lays out some speculative syntax to use a `consteval mutable` variable to define a loop:
 
@@ -208,7 +208,7 @@ If we did restrict the state values to only a single type, then we would actuall
 Now, I should also say that this example code we have here *could* feasibly be accomplished using `define_aggregate`. What distinguishes our code, however, is that these `consteval` blocks which store the state don't need to all be at the same scope. We could for instance add the following code to our usage:
 
 ```cpp
-void some_function() {
+auto some_function() -> void {
     consteval {
         my_state::insert(2, 42);
     }
@@ -414,9 +414,9 @@ namespace impl {
 
     template<typename Body, std::meta::info... CallOperators>
     struct replicator_t {
-        static constexpr auto execute() -> void {
+        static constexpr auto execute(const Body body) -> void {
             template for (constexpr auto CallOperator : {CallOperators...}) {
-                Body{}.[: CallOperator :]();
+                body.[: CallOperator :]();
             }
         }
     };
@@ -429,20 +429,20 @@ namespace impl {
 
 `Body` here will be the type of the lambda object that we pass to `expand_loop`, and `CallOperators` will be all the substituted call operator templates of the lambda that our `expand_loop` will gather.
 
-And then in the `execute` method we just call all those call operators. Because we only have the type of the lambda, we default-construct it so we can call a member function on it. That means we only work with capture-less lambdas, which is a sound requirement anyways.
+And then in the `execute` method we just call all those call operators on the lambda `body`.
 
-But basically this `replicator` is just taking in a list of functions to call, and then calling them in its `execute` method. Simple on its own.
+So basically this `replicator` is just taking in a list of functions to call, and then calling them in its `execute` method. Simple on its own.
 
 Now let's take a peek at implementing `expand_loop`. We're going to separate out the meat of this into a separate function, so the function we actually call gets to look like this:
 
 ```cpp
 template<typename Body>
-constexpr auto expand_loop(Body) -> void {
-    return [: impl::expand_loop<Body>() :].execute();
+constexpr auto expand_loop(const Body body) -> void {
+    return [: impl::expand_loop<Body>() :].execute(body);
 }
 ```
 
-Here we end up calling an `impl::expand_loop` function template, which will return a `std::meta::info` of the `impl::replicator` object. We can then splice that object in, and then call the `execute` method on it. Notice as well that we don't care about the actual `Body` object, only its type. Because we accept a captureless lambda, it has no state and its object is irrelevant.
+Here we end up calling an `impl::expand_loop` function template, which will return a `std::meta::info` of the `impl::replicator` object. We can then splice that object in, and then call the `execute` method on it.
 
 So now let's see about this `impl::expand_loop` function. Let's sketch it out first:
 
@@ -548,9 +548,9 @@ expand_loop([]<auto Loop>() {
 });
 ```
 
-We can even manage and update our own separate states in each loop iteration too, like is shown in the initial [Compiler Explorer link I gave](https://compiler-explorer.com/z/xfzfPPP1M).
+We can even manage and update our own separate states in each loop iteration too, like is shown in the initial [Compiler Explorer link I gave](https://compiler-explorer.com/z/rGxjYavxa).
 
-As well, one can forgo using our `push` and `last` functions on our `consteval_state`s, and instead only `insert` at and `get` from a given index, and if we do then we can [get this to work on GCC](https://compiler-explorer.com/z/ncf1T8hz6), with some other slight changes. We can't use a `consteval_state` quite like a variable on GCC currently, but it proves that the `expand_loop` can work even there.
+As well, one can forgo using our `push` and `last` functions on our `consteval_state`s, and instead only `insert` at and `get` from a given index, and if we do then we can [get this to work on GCC](https://compiler-explorer.com/z/MoEor1a5G), with some other slight changes. We can't use a `consteval_state` quite like a variable on GCC currently, but it proves that the `expand_loop` can work even there.
 
 ## And That Just... Works?
 
