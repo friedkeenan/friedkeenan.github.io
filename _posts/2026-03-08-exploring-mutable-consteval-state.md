@@ -16,7 +16,7 @@ With a `consteval mutable` variable, you would be able to gradually update the s
 
 And very quickly I realized that... that's just stateful metaprogramming. And we can do that with friend injection. And we can even use C++26 reflection to inject that sort of state, like in my previous post.
 
-And so that's basically what I've done: [Take a look](https://compiler-explorer.com/z/dGPPqsbrz).
+And so that's basically what I've done: [Take a look](https://compiler-explorer.com/z/xfzfPPP1M).
 
 In Barry's blogpost as well, he lays out some speculative syntax to use a `consteval mutable` variable to define a loop:
 
@@ -31,17 +31,15 @@ Which is like an expansion statement we have now, but instead of just expanding 
 And by the end of this post, we'll be able to construct much the same thing in library code:
 
 ```cpp
-[:
-    expand_loop([]<auto Loop>() {
-        /* ... */
+expand_loop([]<auto Loop>() {
+    /* ... */
 
-        consteval {
-            if (Loop.index() >= 3) {
-                Loop.push_break();
-            }
+    consteval {
+        if (Loop.index() >= 3) {
+            Loop.push_break();
         }
-    })
-:].execute();
+    }
+});
 ```
 
 It's not quite the same as what Barry showed, it's more like a `template while (true)`, but we can accomplish basically the same thing with it.
@@ -372,17 +370,15 @@ template for (consteval mutable int i = 0; i < 4; ++i) {
 
 At the start of this post, I showed that eventually we'd be able to make something that accomplishes the same thing, that looks like this:
 ```cpp
-[:
-    expand_loop([]<auto Loop>() {
-        /* ... */
+expand_loop([]<auto Loop>() {
+    /* ... */
 
-        consteval {
-            if (Loop.index() >= 3) {
-                Loop.push_break();
-            }
+    consteval {
+        if (Loop.index() >= 3) {
+            Loop.push_break();
         }
-    })
-:].execute();
+    }
+});
 ```
 
 So let's work towards that.
@@ -416,43 +412,60 @@ Their `expand` helper uses an implementation-detail called `replicator` which ef
 ```cpp
 namespace impl {
 
-    template<auto Body, std::meta::info... CallOperators>
+    template<typename Body, std::meta::info... CallOperators>
     struct replicator_t {
         static constexpr auto execute() -> void {
             template for (constexpr auto CallOperator : {CallOperators...}) {
-                Body.[: CallOperator :]();
+                Body{}.[: CallOperator :]();
             }
         }
     };
 
-    template<auto Body, std::meta::info... CallOperators>
+    template<typename Body, std::meta::info... CallOperators>
     constexpr inline auto replicator = replicator_t<Body, CallOperators...>{};
 
 }
 ```
 
-`Body` here will be the lambda object that we pass to `expand_loop`, and `CallOperators` will be all the substituted call operator templates of the lambda that our `expand_loop` will gather.
+`Body` here will be the type of the lambda object that we pass to `expand_loop`, and `CallOperators` will be all the substituted call operator templates of the lambda that our `expand_loop` will gather.
 
-And then in the `execute` method we just call all those call operators. So basically this `replicator` is just taking in a list of functions to call, and then calling them in its `execute` method. Simple on its own.
+And then in the `execute` method we just call all those call operators. Because we only have the type of the lambda, we default-construct it so we can call a member function on it. That means we only work with capture-less lambdas, which is a sound requirement anyways.
 
-Now let's take a peek at implementing `expand_loop`. Let's sketch it out first:
+But basically this `replicator` is just taking in a list of functions to call, and then calling them in its `execute` method. Simple on its own.
+
+Now let's take a peek at implementing `expand_loop`. We're going to separate out the meat of this into a separate function, so the function we actually call gets to look like this:
 
 ```cpp
 template<typename Body>
-consteval auto expand_loop(const Body body) -> std::meta::info {
-    /* We'll accumulate the args to 'impl::replicator' here. */
-    std::vector<std::meta::info> args = ...;
-
-    return substitute(^^impl::replicator, args);
+constexpr auto expand_loop(Body) -> void {
+    return [: impl::expand_loop<Body>() :].execute();
 }
 ```
 
-It takes in some lambda `body`, and returns a `std::meta::info` representing the `impl::replicator` object, which we can then splice in and call `execute` on, in order to enter our expanded loop.
+Here we end up calling an `impl::expand_loop` function template, which will return a `std::meta::info` of the `impl::replicator` object. We can then splice that object in, and then call the `execute` method on it. Notice as well that we don't care about the actual `Body` object, only its type. Because we accept a captureless lambda, it has no state and its object is irrelevant.
 
-But now we'll need to figure out how to fill in those `args`. The first one is just the `body`, so we can start off with that:
+So now let's see about this `impl::expand_loop` function. Let's sketch it out first:
 
 ```cpp
-auto args = std::vector{std::meta::reflect_constant(body)};
+namespace impl {
+
+    template<typename Body>
+    consteval auto expand_loop() -> std::meta::info {
+        /* We'll accumulate the args to 'impl::replicator' here. */
+        std::vector<std::meta::info> args = ...;
+
+        return substitute(^^impl::replicator, args);
+    }
+
+}
+```
+
+It accepts the `Body` template parameter, and returns a `std::meta::info` representing the `impl::replicator` object, which we will then splice in and call `execute` on, in order to enter our expanded loop.
+
+But now we'll need to figure out how to fill in those `args`. The first one is just `Body`, so we can start off with that:
+
+```cpp
+auto args = std::vector{^^Body};
 ```
 
 As for the rest of the arguments, basically what we'll do is we'll make our own `consteval_state` for the state of the loop, which we can substitute into the lambda's call operator template. Then, in the lambda it can interact with that loop state to signal that we should end the loop, and thus stop accumulating arguments.
@@ -460,25 +473,29 @@ As for the rest of the arguments, basically what we'll do is we'll make our own 
 Let's sketch out that state:
 
 ```cpp
-template<typename Body>
-consteval auto expand_loop(const Body body) -> std::meta::info {
-    /* ... */
+namespace impl {
 
-    struct loop_state : consteval_state<loop_state> {
-        std::size_t _index;
+    template<typename Body>
+    consteval auto expand_loop() -> std::meta::info {
+        /* ... */
 
-        constexpr auto index(this loop_state self) -> std::size_t {
-            return self._index;
-        }
+        struct loop_state : consteval_state<loop_state> {
+            std::size_t _index;
 
-        static consteval auto push_break() -> void {
-            consteval_state<loop_state>::insert(0, 0);
-        }
+            constexpr auto index(this loop_state self) -> std::size_t {
+                return self._index;
+            }
 
-        static consteval auto should_break() -> bool {
-            return consteval_state<loop_state>::has_inserted_at(0);
-        }
-    };
+            static consteval auto push_break() -> void {
+                consteval_state<loop_state>::insert(0, 0);
+            }
+
+            static consteval auto should_break() -> bool {
+                return consteval_state<loop_state>::has_inserted_at(0);
+            }
+        };
+    }
+
 }
 ```
 
@@ -520,20 +537,18 @@ But I'll leave it as-is for now, since it works and looks nicer this way.
 Anyways though, we're then able to use our `expand_loop` like so:
 
 ```cpp
-[:
-    expand_loop([]<auto Loop>() {
-        std::printf("LOOP: %zu\n", Loop.index());
+expand_loop([]<auto Loop>() {
+    std::printf("LOOP: %zu\n", Loop.index());
 
-        consteval {
-            if (Loop.index() >= 3) {
-                Loop.push_break();
-            }
+    consteval {
+        if (Loop.index() >= 3) {
+            Loop.push_break();
         }
-    })
-:].execute();
+    }
+});
 ```
 
-We can even manage and update our own separate states in each loop iteration too, like is shown in the initial [Compiler Explorer link I gave](https://compiler-explorer.com/z/dGPPqsbrz).
+We can even manage and update our own separate states in each loop iteration too, like is shown in the initial [Compiler Explorer link I gave](https://compiler-explorer.com/z/xfzfPPP1M).
 
 ## And That Just... Works?
 
