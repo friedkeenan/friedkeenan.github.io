@@ -251,10 +251,10 @@ But with reflection, this poses a slight issue. We want to be able to reflect ov
 
 ```cpp
 
-void function(int original_name);
+auto function(int original_name) -> void;
 
 /* Redeclare and change the parameter name. */
-void function(int altered_name);
+auto function(int altered_name) -> void;
 ```
 
 Then when you ask for the identifier of that first parameter, which name should you get? Well, neither name really stands out as the unambiguously correct option. So what the standard says about this situation is that you shouldn't be able to get the identifier of a function parameter once it has been redeclared with a different name.
@@ -262,13 +262,13 @@ Then when you ask for the identifier of that first parameter, which name should 
 That means that `identifier_of` will fail, and `has_identifier` will return false, and this behavior will change depending on what the compiler has seen so far:
 
 ```cpp
-void function(int original_name);
+auto function(int original_name) -> void;
 
 /* All good, only one name so far. */
 static_assert(has_identifier(parameters_of(^^function)[0]));
 
 /* Redeclare and change the parameter name. */
-void function(int altered_name);
+auto function(int altered_name) -> void;
 
 /* We can no longer get the identifier of the parameter. */
 static_assert(not has_identifier(parameters_of(^^function)[0]));
@@ -549,6 +549,8 @@ expand_loop([]<auto Loop>() {
 ```
 
 We can even manage and update our own separate states in each loop iteration too, like is shown in the initial [Compiler Explorer link I gave](https://compiler-explorer.com/z/xfzfPPP1M).
+
+As well, one can forgo using our `push` and `last` functions on our `consteval_state`s, and instead only `insert` at and `get` from a given index, and if we do then we can [get this to work on GCC](https://compiler-explorer.com/z/ncf1T8hz6), with some other slight changes. We can't use a `consteval_state` quite like a variable on GCC currently, but it proves that the `expand_loop` can work even there.
 
 ## And That Just... Works?
 
