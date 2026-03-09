@@ -239,7 +239,7 @@ static_assert(is_complete_type(^^some_type));
 
 This is actually how `define_aggregate` can be used to gradually accumulate state. You can check whether a class has been completed yet, and if not, then you can call `define_aggregate` on it, making it then complete.
 
-But I'm not sure how we could later define a type in concert with friend injection without running into the inherit limitations of `define_aggregate`. So I don't think `is_complete_type` will work for us.
+But I'm not sure how we could later define a type in concert with friend injection without running into the inherent limitations of `define_aggregate`. So I don't think `is_complete_type` will work for us.
 
 I'm going to cut out a lot of trial and error here that I went through. In short, I only ended up finding one thing that will work for us. It's definitely possible I've missed something, and I greatly encourage you to try to figure out another way, because this way is... weird.
 
