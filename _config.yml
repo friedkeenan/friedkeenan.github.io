@@ -151,15 +151,12 @@ baseurl: ""
 
 kramdown:
   footnote_backlink: "&#8617;&#xfe0e;"
-  syntax_highlighter: rouge
-  syntax_highlighter_opts: # Rouge Options › https://github.com/jneen/rouge#full-options
-    css_class: highlight
-    # default_lang: console
-    span:
-      line_numbers: false
-    block:
-      line_numbers: true
-      start_line: 1
+  syntax_highlighter: nil
+  # We disable any syntax-highlighting through
+  # kramdown in favor of using Prism.js
+  #
+  # This allows us to easily highlight
+  # inline `code` text, and a few other things.
 
 collections:
   tabs:

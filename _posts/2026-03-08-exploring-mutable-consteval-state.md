@@ -6,6 +6,8 @@ tags:
     - c++26
     - reflection
     - friend-injection
+
+default_lang: cpp
 ---
 
 Recently I wrote a post titled ["Implementing Constexpr Parameters Using C++26 Reflection (Kind Of)"](/posts/implementing-constexpr-parameters-kind-of). The primary mechanic behind that post was using C++26's `std::meta::substitute` in order to trigger friend injection and insert some global state during constant evaluation, and it left me wondering what other crazy stuff we might be able to do with that technique.
@@ -125,7 +127,7 @@ struct consteval_state {
 ```
 
 {:.prompt-info}
-> As in the previous post, the `extract<std::size_t>(substitute(....))` expression here is just to convince the compiler to instantiate our substituted template, otherwise it just won't bother.
+> As in the previous post, the `extract<std::size_t>(substitute(...))` expression here is just to convince the compiler to instantiate our substituted template, otherwise it just won't bother.
 
 Retrieving the state has a little more to it, but not much more. First we're going to define a helper variable template for retrieving the state value from a given index type:
 
@@ -250,7 +252,6 @@ Function parameter names are a little strange. When you declare a function, you 
 But with reflection, this poses a slight issue. We want to be able to reflect over function parameters and see what names they have. But if you have a situation like this:
 
 ```cpp
-
 auto function(int original_name) -> void;
 
 /* Redeclare and change the parameter name. */

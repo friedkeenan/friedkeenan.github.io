@@ -1,0 +1,29 @@
+---
+---
+
+@use "prism-dark";
+@use "prism-light";
+
+html {
+  @media (prefers-color-scheme: light) {
+    &:not([data-mode]),
+    &[data-mode='light'] {
+      @include prism-light.theme;
+    }
+
+    &[data-mode='dark'] {
+      @include prism-dark.theme;
+    }
+  }
+
+  @media (prefers-color-scheme: dark) {
+    &:not([data-mode]),
+    &[data-mode='dark'] {
+      @include prism-dark.theme;
+    }
+
+    &[data-mode='light'] {
+      @include prism-light.theme;
+    }
+  }
+}

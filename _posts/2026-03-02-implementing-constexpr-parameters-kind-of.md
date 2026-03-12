@@ -6,6 +6,8 @@ tags:
     - c++26
     - reflection
     - friend-injection
+
+default_lang: cpp
 ---
 
 {:.prompt-info}
