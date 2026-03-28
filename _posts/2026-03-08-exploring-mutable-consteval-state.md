@@ -7,10 +7,12 @@ tags:
     - reflection
     - friend-injection
 
+redirect_from: /posts/exploring-mutable-consteval-state
+
 default_lang: cpp
 ---
 
-Recently I wrote a post titled ["Implementing Constexpr Parameters Using C++26 Reflection (Kind Of)"](/posts/implementing-constexpr-parameters-kind-of). The primary mechanic behind that post was using C++26's `std::meta::substitute` in order to trigger friend injection and insert some global state during constant evaluation, and it left me wondering what other crazy stuff we might be able to do with that technique.
+Recently I wrote a post titled ["Implementing Constexpr Parameters Using C++26 Reflection (Kind Of)"](/posts/2026/03/02/implementing-constexpr-parameters-kind-of). The primary mechanic behind that post was using C++26's `std::meta::substitute` in order to trigger friend injection and insert some global state during constant evaluation, and it left me wondering what other crazy stuff we might be able to do with that technique.
 
 As well, shortly after making that post, I read Barry Revzin's blogpost ["Behold the power of `meta::substitute`"](https://brevzin.github.io/c++/2026/03/02/power-of-substitute/), where he actually shows off some really cool stuff that leads to a result very similar to my previous post, but in its own way. However, what really caught my eye was that, at the end of his blogpost, he brings up the idea of a `consteval mutable` variable.
 
