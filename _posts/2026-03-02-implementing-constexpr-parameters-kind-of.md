@@ -7,7 +7,7 @@ tags:
     - reflection
     - friend-injection
 
-redirect_from: /posts/implementing-constexpr-parameters-kind-of
+redirect_from: /posts/implementing-constexpr-parameters-kind-of/
 
 default_lang: cpp
 ---

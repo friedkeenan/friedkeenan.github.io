@@ -7,7 +7,7 @@ tags:
     - reflection
     - friend-injection
 
-redirect_from: /posts/exploring-mutable-consteval-state
+redirect_from: /posts/exploring-mutable-consteval-state/
 
 default_lang: cpp
 ---
