@@ -419,7 +419,7 @@ With parentheses surrounding the braces.
 
 This is because we can't add methods onto a type that we define with `define_aggregate`, or dynamically add fields to a class which we're in the process of defining.
 
-There is a trick where can *inherit* from a `define_aggregate`-ed type and then add methods in the inheriting class, but that would still require us to change how we initialize a `translation_set`, so that's of no use to us.
+There is a trick where one can *inherit* from a `define_aggregate`-ed type and then add methods in the inheriting class, but that would still require us to change how we initialize a `translation_set`, so that's of no use to us.
 
 For my project, this is perfectly fine since I control every usage point of all this code. But in other situations, breaking the API like this might not be as acceptable.
 
