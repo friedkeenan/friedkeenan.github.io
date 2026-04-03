@@ -482,7 +482,7 @@ To me, it appears even more simple than what we had to put together in order to 
 
 I think I even find this more simple than our original code without any reflection. Now we don't have to look at four different places for each and every language to make sure everything's alright. We've reduced a lot of mental overhead.
 
-Sure, we had to change the interface, but that seems a small price to pay here. And it could plausibly be a benefit too, in that we now have more control over the internal representation of a `translation_set`. We could store the strings however want to, if we added our own constructor.
+Sure, we had to change the interface, but that seems a small price to pay here. And it could plausibly be a benefit too, in that we now have more control over the internal representation of a `translation_set`. We could store the strings however we want to, if we added our own constructor.
 
 I am very much pleased with this.
 
